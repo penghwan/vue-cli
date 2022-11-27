@@ -1,37 +1,56 @@
 #!/usr/bin/env node
 
+// 加载依赖配置
+// 下载远程仓库内容
 const download = require('download-git-repo')
+// 命令行处理工具
 const program = require('commander')
+// fs是node下的文件操作，existsSync——检测路径是否存在
 const exists = require('fs').existsSync
+// node自带path模块，拼接路径
 const path = require('path')
+// 命令行加载效果
 const ora = require('ora')
+// 获取当前用户的根目录
 const home = require('user-home')
+// 绝对路径替换成带波浪号
 const tildify = require('tildify')
+// 高亮打印
 const chalk = require('chalk')
-const inquirer = require('inquirer')
+// 用户与脚本的命令行交互
+const inquirer = require('inquirer') // 开源库inquirer.js
+// rm -rf的js版本，删除文件和文件夹
 const rm = require('rimraf').sync
+// 日志打印 - 统一化格式打印
 const logger = require('../lib/logger')
+// 根据模板构建项目：模板 => 生成项目
 const generate = require('../lib/generate')
+// 检测当前脚手架版本 - 检查与node的搭配版本 & 是否有可升级版本
 const checkVersion = require('../lib/check-version')
+// 告警 - 废弃版本 / 老版本的提示校验
 const warnings = require('../lib/warnings')
+// 路径处理检查
 const localPath = require('../lib/local-path')
 
+// 检测本地路径是否正确
 const isLocalPath = localPath.isLocalPath
+// 检测本地模板路径
 const getTemplatePath = localPath.getTemplatePath
 
 /**
- * Usage.
+ * Usage 脚手架使用手册
  */
-
+// 配置commander使用方法
+// 面试：如何使用本地离线下载好的或者自己预设的模板--offline
 program
   .usage('<template-name> [project-name]')
   .option('-c, --clone', 'use git clone')
   .option('--offline', 'use cached template')
 
 /**
- * Help.
+ * Help. 帮助手册
  */
-
+// 定义commander的help方法返回
 program.on('--help', () => {
   console.log('  Examples:')
   console.log()
@@ -54,18 +73,28 @@ function help () {
 help()
 
 /**
- * Settings.
+ * Settings. 主要设置
  */
-
+// 如何取到program.args
+// 模板名称
 let template = program.args[0]
+// 当前模板是否包含斜杠 => 判断是否从GitHub下载模板
 const hasSlash = template.indexOf('/') > -1
+// 目录名
 const rawName = program.args[1]
+// 目录名为空 => 是否为当前文件路径
 const inPlace = !rawName || rawName === '.'
+// 当前目录名为项目构建目录名 or 当前目录子目录
+// process.cwd()：当前执行node命令时候的文件夹地址
 const name = inPlace ? path.relative('../', process.cwd()) : rawName
+// 绝对路径
 const to = path.resolve(rawName || '.')
+// 提供参数
 const clone = program.clone || false
 
+// 本地目录的拼接：C:\Users\penghwan\.vue-templates\vue-demo（vue-demo是项目名称）
 const tmp = path.join(home, '.vue-templates', template.replace(/[\/:]/g, '-'))
+// 使用离线模板逻辑
 if (program.offline) {
   console.log(`> Use cached template at ${chalk.yellow(tildify(tmp))}`)
   template = tmp
@@ -79,8 +108,9 @@ console.log()
 process.on('exit', () => {
   console.log()
 })
-
+// 是否为当前目录下构建 || 存在传入路径
 if (inPlace || exists(to)) {
+  // 弹出问题，让使用者选择
   inquirer.prompt([{
     type: 'confirm',
     message: inPlace
@@ -99,37 +129,50 @@ if (inPlace || exists(to)) {
 /**
  * Check, download and generate the project.
  */
-
+// 主函数
 function run () {
   // check if template is local
-  if (isLocalPath(template)) {
+  // 是否本地模板
+  if (isLocalPath(template)) { // 是本地模板
+    // ~/.vue-template/……
+    // 获取绝对路径
     const templatePath = getTemplatePath(template)
+    // 判断模板路径本地存在
     if (exists(templatePath)) {
+      // 本地的模板去生成最终文件项目
+      // TODO: generate
       generate(name, templatePath, to, err => {
         if (err) logger.fatal(err)
         console.log()
         logger.success('Generated "%s".', name)
       })
     } else {
+      // 本地模板没找着
       logger.fatal('Local template "%s" not found.', template)
     }
-  } else {
+  } else {  // 非本地模板
+    // 检查版本号
+    // TODO: checkVersion
     checkVersion(() => {
+      // 官方模板 or 第三方模板
       if (!hasSlash) {
         // use official templates
         const officialTemplate = 'vuejs-templates/' + template
+        // #可用
         if (template.indexOf('#') !== -1) {
+          // 下载模板和生成框架
           downloadAndGenerate(officialTemplate)
         } else {
           if (template.indexOf('-2.0') !== -1) {
+            // 告警
+            // TODO: warnings
             warnings.v2SuffixTemplatesDeprecated(template, inPlace ? '' : name)
             return
           }
-
           // warnings.v2BranchIsNowDefault(template, inPlace ? '' : name)
           downloadAndGenerate(officialTemplate)
         }
-      } else {
+      } else { // 第三方模板，GitHub上的模板
         downloadAndGenerate(template)
       }
     })
@@ -146,10 +189,13 @@ function downloadAndGenerate (template) {
   const spinner = ora('downloading template')
   spinner.start()
   // Remove if local template exists
+  // 删除本地模板
   if (exists(tmp)) rm(tmp)
+  // 加载远程仓库
   download(template, tmp, { clone }, err => {
     spinner.stop()
     if (err) logger.fatal('Failed to download repo ' + template + ': ' + err.message.trim())
+    // TODO: generate
     generate(name, tmp, to, err => {
       if (err) logger.fatal(err)
       console.log()

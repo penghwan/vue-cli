@@ -4,6 +4,9 @@ const logger = require('../lib/logger')
 const request = require('request')
 const chalk = require('chalk')
 
+
+
+// 面试 vue list展示的是官方or非官方模板 / 展示的是本地缓存模板吗？
 /**
  * Padding.
  */

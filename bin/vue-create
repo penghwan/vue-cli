@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// 后续写脚本化交互的js时候，可以参考这种
 const chalk = require('chalk')
 
 console.log()

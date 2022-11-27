@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// 命令收集器
 const program = require('commander')
 
 program
