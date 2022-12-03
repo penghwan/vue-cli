@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 // 加载依赖配置
-// 下载远程仓库内容
+// 下载远程仓库内容至本地，支持GitHub、GitLab、Bitbucket
 const download = require('download-git-repo')
 // 命令行处理工具
 const program = require('commander')
-// fs是node下的文件操作，existsSync——检测路径是否存在
+// fs是node下的文件操作，existsSync——用于检测路径是否存在
 const exists = require('fs').existsSync
 // node自带path模块，拼接路径
 const path = require('path')
@@ -13,28 +13,28 @@ const path = require('path')
 const ora = require('ora')
 // 获取当前用户的根目录
 const home = require('user-home')
-// 绝对路径替换成带波浪号
+// 将绝对路径转换成带波浪号的路径
 const tildify = require('tildify')
-// 高亮打印
+// 用于高亮终端打印出的信息
 const chalk = require('chalk')
-// 用户与脚本的命令行交互
+// 用于命令行与开发者交互
 const inquirer = require('inquirer') // 开源库inquirer.js
 // rm -rf的js版本，删除文件和文件夹
 const rm = require('rimraf').sync
-// 日志打印 - 统一化格式打印
+// 自定义工具-日志打印，用于统一化格式打印
 const logger = require('../lib/logger')
-// 根据模板构建项目：模板 => 生成项目
+// 自定义工具-用于基于模板构建项目：模板 => 生成项目
 const generate = require('../lib/generate')
-// 检测当前脚手架版本 - 检查与node的搭配版本 & 是否有可升级版本
+// 自定义工具-用于检测vue-cli架版本的工具 - 检查与node的搭配版本 & 是否有可升级版本
 const checkVersion = require('../lib/check-version')
-// 告警 - 废弃版本 / 老版本的提示校验
+// 自定义工具-用于模板的警告 - 废弃版本/老版本的提示校验
 const warnings = require('../lib/warnings')
-// 路径处理检查
+// 自定义工具-用于路径的处理
 const localPath = require('../lib/local-path')
 
-// 检测本地路径是否正确
+// 判断是否是本地路径
 const isLocalPath = localPath.isLocalPath
-// 检测本地模板路径
+// 获取本地模板的绝对路径
 const getTemplatePath = localPath.getTemplatePath
 
 /**
@@ -43,14 +43,14 @@ const getTemplatePath = localPath.getTemplatePath
 // 配置commander使用方法
 // 面试：如何使用本地离线下载好的或者自己预设的模板--offline
 program
-  .usage('<template-name> [project-name]')
+  .usage('<template-name> [project-name]') // 通过这个选项可以修改帮助信息的首行提示，Usage: <template-name> [project-name]
   .option('-c, --clone', 'use git clone')
-  .option('--offline', 'use cached template')
+  .option('--offline', 'use cached template') // 命令：vue-init webpack my-project --offline，用于获取本地模板
 
 /**
  * Help. 帮助手册
  */
-// 定义commander的help方法返回
+// 定义commander的help方法
 program.on('--help', () => {
   console.log('  Examples:')
   console.log()
@@ -62,41 +62,38 @@ program.on('--help', () => {
   console.log()
 })
 
-/**
- * Help.
- */
-
 function help () {
   program.parse(process.argv)
-  if (program.args.length < 1) return program.help()
+  // program.help()：展示帮助信息并退出
+  if (program.args.length < 1) return program.help() // 如果只输入vue-init，没有输入参数，终端显示帮助
 }
 help()
 
 /**
  * Settings. 主要设置
  */
-// 如何取到program.args
-// 模板名称
+// 命令：vue init webpack my-project  ===> program.args[0]: webpack, program.args[1]: my-project
+// 模板名称：webpack或者username/repo
 let template = program.args[0]
-// 当前模板是否包含斜杠 => 判断是否从GitHub下载模板
+// 当前模板是否包含斜杠 => 用于判定是否为官方模板
 const hasSlash = template.indexOf('/') > -1
-// 目录名
+// 项目构建目录名，值为my-project
 const rawName = program.args[1]
-// 目录名为空 => 是否为当前文件路径
+// 没写项目名或者“.”，表示当前目录下构建项目
 const inPlace = !rawName || rawName === '.'
-// 当前目录名为项目构建目录名 or 当前目录子目录
+// 如果在当前目录下构建项目，当前目录名为项目构建目录名，否则是当前目录子目录，rawName为项目构建目录名
 // process.cwd()：当前执行node命令时候的文件夹地址
 const name = inPlace ? path.relative('../', process.cwd()) : rawName
-// 绝对路径
-const to = path.resolve(rawName || '.')
-// 提供参数
+// 项目构建目录的绝对路径
+const to = path.resolve(rawName || '.') // D:\code\vue\vue-cli\my-project，命令：vue init webpack my-project
+// 是否采用clone模式，给“download-git-repo”提供参数
 const clone = program.clone || false
 
-// 本地目录的拼接：C:\Users\penghwan\.vue-templates\vue-demo（vue-demo是项目名称）
+// 远程模板下载到本地的路径，路径为：C:\Users\penghwan\.vue-templates\webpack（webpack是template模板名称）
 const tmp = path.join(home, '.vue-templates', template.replace(/[\/:]/g, '-'))
 // 使用离线模板逻辑
-if (program.offline) {
-  console.log(`> Use cached template at ${chalk.yellow(tildify(tmp))}`)
+if (program.offline) { // 使用命令：vue-init webpack my-project --offline来生成项目，此时program.offline为true
+  console.log(`> Use cached template at ${chalk.yellow(tildify(tmp))}`) // tildify(tmp): ~\.vue-templates\webpack
   template = tmp
 }
 
@@ -108,7 +105,9 @@ console.log()
 process.on('exit', () => {
   console.log()
 })
-// 是否为当前目录下构建 || 存在传入路径
+// 判断是否输入项目名
+// 是：直接执行run函数
+// 否：询问开发者是否在当前目录下生成项目，开发者回答“是”执行run函数，否则报错
 if (inPlace || exists(to)) {
   // 弹出问题，让使用者选择
   inquirer.prompt([{
@@ -132,14 +131,12 @@ if (inPlace || exists(to)) {
 // 主函数
 function run () {
   // check if template is local
-  // 是否本地模板
-  if (isLocalPath(template)) { // 是本地模板
+  if (isLocalPath(template)) { // 是否本地模板
     // ~/.vue-template/……
     // 获取绝对路径
     const templatePath = getTemplatePath(template)
-    // 判断模板路径本地存在
-    if (exists(templatePath)) {
-      // 本地的模板去生成最终文件项目
+    if (exists(templatePath)) { // 判断模板路径本地存在
+      // 渲染模板
       // TODO: generate
       generate(name, templatePath, to, err => {
         if (err) logger.fatal(err)
@@ -147,24 +144,22 @@ function run () {
         logger.success('Generated "%s".', name)
       })
     } else {
-      // 本地模板没找着
+      // 打印错误日志，提示本地模板不存在
       logger.fatal('Local template "%s" not found.', template)
     }
-  } else {  // 非本地模板
+  } else { // 非本地模板
     // 检查版本号
     // TODO: checkVersion
     checkVersion(() => {
-      // 官方模板 or 第三方模板
-      if (!hasSlash) {
+      if (!hasSlash) { // 官方模板 or 第三方模板
         // use official templates
+        // 从这句话以及download-git-repo的用法，得知vue的官方模板库地址：https://github.com/vuejs-templates
         const officialTemplate = 'vuejs-templates/' + template
-        // #可用
-        if (template.indexOf('#') !== -1) {
-          // 下载模板和生成框架
-          downloadAndGenerate(officialTemplate)
+        if (template.indexOf('#') !== -1) { // 模板是否带“#”
+          downloadAndGenerate(officialTemplate) // 下载模板和生成框架
         } else {
-          if (template.indexOf('-2.0') !== -1) {
-            // 告警
+          if (template.indexOf('-2.0') !== -1) { // 模板是否带“-2.0"
+            // 发出警告
             // TODO: warnings
             warnings.v2SuffixTemplatesDeprecated(template, inPlace ? '' : name)
             return
@@ -187,15 +182,16 @@ function run () {
 
 function downloadAndGenerate (template) {
   const spinner = ora('downloading template')
-  spinner.start()
+  spinner.start() // 显示加载状态
   // Remove if local template exists
-  // 删除本地模板
+  // 当前本地模板库（C:\Users\penghwan\.vue-templates）是否存在该模板，存在就删除
   if (exists(tmp)) rm(tmp)
-  // 加载远程仓库
+  // 下载模板，template-模板名，tmp-模板路径，clone-是否采用git clone模板，err-错误信息
   download(template, tmp, { clone }, err => {
     spinner.stop()
     if (err) logger.fatal('Failed to download repo ' + template + ': ' + err.message.trim())
     // TODO: generate
+    // 渲染模板
     generate(name, tmp, to, err => {
       if (err) logger.fatal(err)
       console.log()

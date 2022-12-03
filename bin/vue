@@ -1,11 +1,27 @@
 #!/usr/bin/env node
+/**
+ * 该文件主要是用户在输入“vue”时，终端上显示参数的使用说明：
+  $ D:\code\vue\vue-wph-cli> wph-cli
+    Usage: www <command> [options]
 
-// 命令收集器
-const program = require('commander')
+    Options:
+      -V, --version   output the version number
+      -h, --help      display help for command
+
+    Commands:
+      init            generate a new project from a template
+      list            list available official templates
+      build           prototype a new project
+      create          (for v3 warning only)
+      help [command]  display help for command
+ */
+const program = require('commander') // 命令收集器
 
 program
+  // program.version()：可以设置版本，其默认选项为-V和--version，设置了版本后，命令行会输出当前的版本号
   .version(require('../package').version)
-  .usage('<command> [options]')
+  // program.usage()：通过这个选项可以修改帮助信息的首行提示
+  .usage('<command> [options]') // Usage: <command> [options]
   .command('init', 'generate a new project from a template')
   .command('list', 'list available official templates')
   .command('build', 'prototype a new project')

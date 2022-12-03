@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-const logger = require('../lib/logger')
-const request = require('request')
+// 可以直接在当前源码文件目录下的终端上输入“bin/vue-list”进行测试
+const logger = require('../lib/logger') // 自定义工具-用于日志打印
+const request = require('request') // 发送http请求的工具
 const chalk = require('chalk')
-
-
 
 // 面试 vue list展示的是官方or非官方模板 / 展示的是本地缓存模板吗？
 /**

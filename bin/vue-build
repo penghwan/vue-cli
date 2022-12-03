@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const chalk = require('chalk')
+const chalk = require('chalk') // 用于高亮终端打印出来的信息
 
 console.log(chalk.yellow(
   '\n' +
